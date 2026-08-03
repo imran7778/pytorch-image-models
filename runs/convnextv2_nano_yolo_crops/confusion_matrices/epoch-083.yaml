@@ -1,0 +1,42 @@
+epoch: 83
+classes:
+- drone
+- bird
+- airplane
+- helicopter
+rows: ground_truth
+columns: prediction
+train:
+- - 58700
+  - 30
+  - 95
+  - 182
+- - 77
+  - 1992
+  - 4
+  - 16
+- - 354
+  - 4
+  - 6836
+  - 126
+- - 405
+  - 2
+  - 86
+  - 7902
+val:
+- - 6632
+  - 4
+  - 8
+  - 5
+- - 1
+  - 108
+  - 0
+  - 1
+- - 16
+  - 0
+  - 749
+  - 2
+- - 21
+  - 0
+  - 0
+  - 876

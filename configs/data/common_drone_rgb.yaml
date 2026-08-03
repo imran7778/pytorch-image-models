@@ -1,0 +1,14 @@
+path: /shared/data/nt_drone_dataset_all_sizes/Unified_Grayscale_Dataset
+train:
+- ../../prepared_datasets/common_drone_rgb/images/train.txt
+val:
+- ../../prepared_datasets/common_drone_rgb/images/val.txt
+nc: 4
+channels: 3
+names:
+- drone
+- bird
+- airplane
+- helicopter
+nurjana_datasets:
+  images: images
