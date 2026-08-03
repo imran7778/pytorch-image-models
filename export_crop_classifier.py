@@ -15,15 +15,18 @@ import yaml
 
 import timm
 
+from environment_paths import ENVIRONMENT_CHOICES, apply_environment
+
 
 INTERPOLATION = re.compile(r"\$\{([^}]+)}")
 
 
-def load_config(path: Path) -> dict[str, Any]:
+def load_config(path: Path, environment: str = "server") -> dict[str, Any]:
     with path.resolve().open("r", encoding="utf-8") as handle:
         cfg = yaml.safe_load(handle)
     if not isinstance(cfg, dict):
         raise ValueError(f"Expected a YAML mapping in {path}")
+    cfg = apply_environment(cfg, environment)
     return resolve_tree(cfg, cfg)
 
 
@@ -338,6 +341,7 @@ def normalize_size(value: Any) -> tuple[int, int]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True, type=Path)
+    parser.add_argument("--environment", choices=ENVIRONMENT_CHOICES, default="server")
     parser.add_argument("--checkpoint", type=Path, help="Override export.checkpoint")
     parser.add_argument("--output-dir", type=Path, help="Override export.output_dir")
     parser.add_argument("--format", choices=("all", "onnx", "engine"), default="all")
@@ -347,7 +351,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, args.environment)
     export_cfg = cfg["export"]
     checkpoint = (args.checkpoint or Path(export_cfg["checkpoint"])).resolve()
     output_dir = (args.output_dir or Path(export_cfg["output_dir"])).resolve()
@@ -358,6 +362,7 @@ def main() -> None:
         targets.append("onnx")
     if args.format in {"all", "engine"} and bool(export_cfg.get("export_engine", True)):
         targets.append("engine")
+    print(f"Environment: {args.environment}")
     print(f"Checkpoint: {checkpoint}")
     print(f"Targets: {targets}")
     print(f"ONNX output: {onnx_path}")

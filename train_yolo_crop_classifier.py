@@ -21,6 +21,8 @@ from tqdm.auto import tqdm
 import timm
 from timm.data import create_transform
 
+from environment_paths import ENVIRONMENT_CHOICES, apply_environment, environment_name
+
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
@@ -278,6 +280,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--local-test", action="store_true")
+    parser.add_argument(
+        "--environment",
+        choices=ENVIRONMENT_CHOICES,
+        help="Path profile. Default is server; --local-test is an alias for local.",
+    )
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--max-train-samples", type=int, default=None)
     parser.add_argument("--max-val-samples", type=int, default=None)
@@ -287,11 +294,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config_path = args.config.resolve()
-    cfg = load_yaml(config_path)
+    selected_environment = environment_name(args.environment, args.local_test)
+    cfg = apply_environment(load_yaml(config_path), selected_environment)
     model_cfg, data_cfg, train_cfg = cfg["model"], cfg["data"], cfg["training"]
     repository_root = Path(__file__).resolve().parent
-    prepared_key = "prepared_local_test_path" if args.local_test else "prepared_server_path"
-    dataset_root = Path(data_cfg[prepared_key])
+    dataset_root = Path(cfg["environment_paths"]["prepared_dataset"])
     if not (dataset_root / "train").is_dir() or not (dataset_root / "val").is_dir():
         raise FileNotFoundError(
             f"Prepared crop dataset is missing at {dataset_root}. Run prepare_yolo_crop_dataset.py first."
@@ -369,7 +376,7 @@ def main() -> None:
 
     print(
         f"Training {model_cfg['name']} on {len(train_dataset)} train and {len(val_dataset)} val prepared bbox crops; "
-        f"dataset={dataset_root}, device={device}.",
+        f"environment={selected_environment}, dataset={dataset_root}, device={device}.",
         flush=True,
     )
     with metrics_path.open("w", newline="", encoding="utf-8") as metrics_file:

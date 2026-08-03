@@ -15,6 +15,8 @@ from typing import Any
 
 from PIL import Image
 
+from environment_paths import ENVIRONMENT_CHOICES, apply_environment, environment_name
+
 from train_yolo_crop_classifier import (
     IMAGE_SUFFIXES,
     label_path_for,
@@ -99,6 +101,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--local-test", action="store_true")
+    parser.add_argument(
+        "--environment",
+        choices=ENVIRONMENT_CHOICES,
+        help="Path profile. Default is server; --local-test is an alias for local.",
+    )
     parser.add_argument("--output", type=Path, help="Optional prepared-root override; never changes YAML")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--jpeg-quality", type=int, default=95)
@@ -109,13 +116,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     repository_root = Path(__file__).resolve().parent
-    cfg = load_yaml(args.config.resolve())
+    selected_environment = environment_name(args.environment, args.local_test)
+    cfg = apply_environment(load_yaml(args.config.resolve()), selected_environment)
     model_cfg, data_cfg, train_cfg = cfg["model"], cfg["data"], cfg["training"]
     data_yaml_path = resolve_path(data_cfg["yaml"], repository_root, repository_root)
     data_yaml = load_yaml(data_yaml_path)
-    source_root = Path(data_cfg["local_test_path"]) if args.local_test else Path(data_yaml["path"])
-    prepared_key = "prepared_local_test_path" if args.local_test else "prepared_server_path"
-    output_root = (args.output or Path(data_cfg[prepared_key])).resolve()
+    source_root = Path(cfg["environment_paths"]["source_dataset"])
+    output_root = (args.output or Path(cfg["environment_paths"]["prepared_dataset"])).resolve()
     if source_root.resolve() == output_root or source_root.resolve() in output_root.parents:
         raise ValueError(f"Prepared output must be outside the source dataset: {source_root}")
     if not source_root.is_dir():
@@ -128,7 +135,7 @@ def main() -> None:
         raise ValueError("Data YAML names and model.num_classes disagree")
     train_images = read_image_list(data_yaml.get("train"), data_yaml_path.parent, source_root)
     val_images = read_image_list(data_yaml.get("val"), data_yaml_path.parent, source_root)
-    if args.local_test and (not train_images or not val_images):
+    if selected_environment == "local" and (not train_images or not val_images):
         all_images = sorted(path for path in (source_root / "images").rglob("*") if path.suffix.lower() in IMAGE_SUFFIXES)
         train_images, val_images = split_images(
             all_images, float(data_cfg["val_fraction_if_lists_missing"]), int(train_cfg["seed"])

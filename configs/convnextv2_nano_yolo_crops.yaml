@@ -3,17 +3,32 @@
 
 # cd /mnt/ssd2/workstation-96/pytorch-model
 
-# python prepare_yolo_crop_dataset.py --config configs/convnextv2_nano_yolo_crops.yaml --local-test
-# python train_yolo_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml --local-test
+# python prepare_yolo_crop_dataset.py --config configs/convnextv2_nano_yolo_crops.yaml --environment local
+# python train_yolo_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml --environment local
 
-# python prepare_yolo_crop_dataset.py --config configs/convnextv2_nano_yolo_crops.yaml 
-# python train_yolo_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml 
+# python prepare_yolo_crop_dataset.py --config configs/convnextv2_nano_yolo_crops.yaml --environment server
+# python train_yolo_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml --environment server
 #
 # Export ONNX and TensorRT:
-# python export_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml
+# python export_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml --environment local
+# python export_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml --environment server
 
-project_root: /mnt/ssd2/workstation-96/pytorch-model
-export_root: /mnt/ssd2/workstation-96/export_models
+environments:
+  local:
+    project_root: /mnt/ssd2/workstation-96/pytorch-model
+    export_root: /mnt/ssd2/workstation-96/export_models
+    source_dataset: /mnt/ssd2/workstation-96/data/Unified_Grayscale_Dataset
+    prepared_dataset: /mnt/ssd2/workstation-96/data/crops
+  server:
+    project_root: /home/imran.ahmed/projects/pytorch-model
+    export_root: /home/imran.ahmed/projects/export_models
+    source_dataset: /shared/data/nt_drone_dataset_all_sizes/Unified_Grayscale_Dataset
+    prepared_dataset: /home/imran.ahmed/projects/repo_pytorch/crops
+
+# These keys are selected in memory from environments.local/server so existing
+# export interpolation remains portable. Do not edit them per machine.
+project_root: ${environments.local.project_root}
+export_root: ${environments.local.export_root}
 ex_name: Exp_1
 model:
   name: convnextv2_nano
@@ -23,12 +38,7 @@ model:
 
 data:
   yaml: configs/data/common_drone_rgb.yaml
-  # Source used only by the preparation command with --local-test. It does not
-  # replace the immutable server source path in common_drone_rgb.yaml.
-  local_test_path: /mnt/ssd2/workstation-96/data/Unified_Grayscale_Dataset/
-  # Prepared crops are deliberately outside the source dataset.
-  prepared_server_path: /shared/data/nt_drone_dataset_all_sizes/crops/
-  prepared_local_test_path: /mnt/ssd2/workstation-96/data/crops/
+  # Source/prepared locations come from the selected environment above.
   crop_expansion: 3.20
   min_crop_pixels: 2
   val_fraction_if_lists_missing: 0.10
