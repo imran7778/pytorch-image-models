@@ -102,6 +102,10 @@ venv.bak/
 
 output/
 
+# Keep the runs directory locally, but never commit generated run contents.
+/runs/*
+!/runs/.gitkeep
+
 # PyTorch weights
 *.tar
 *.pth
