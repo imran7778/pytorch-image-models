@@ -8,6 +8,8 @@
 
 # python prepare_yolo_crop_dataset.py --config configs/convnextv2_nano_yolo_crops.yaml --environment server
 # python train_yolo_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml --environment server
+# python train_server.py
+
 #
 # Export ONNX and TensorRT:
 # python export_crop_classifier.py --config configs/convnextv2_nano_yolo_crops.yaml --environment local
@@ -29,12 +31,19 @@ environments:
 # export interpolation remains portable. Do not edit them per machine.
 project_root: ${environments.local.project_root}
 export_root: ${environments.local.export_root}
-ex_name: Exp_1
+ex_name: DINO_huge
 model:
-  name: convnextv2_nano
-  pretrained: false
-  input_size: 224
+  name: vit_huge_plus_patch16_dinov3.lvd1689m # vit_base_patch16_dinov3.lvd1689m #convnextv2_nano
+  pretrained: true
+  input_size: 256
   num_classes: 4
+
+# vit_small_patch16_dinov3.lvd1689m
+# vit_small_plus_patch16_dinov3.lvd1689m
+# vit_base_patch16_dinov3.lvd1689m
+# vit_large_patch16_dinov3.lvd1689m
+# vit_huge_plus_patch16_dinov3.lvd1689m
+# vit_7b_patch16_dinov3.lvd1689m
 
 data:
   yaml: configs/data/common_drone_rgb.yaml
@@ -47,7 +56,7 @@ training:
   output_dir: runs/${ex_name}
   epochs: 100
   # Safe default for an 8 GiB GPU. Increase only after checking free VRAM.
-  batch_size: 64
+  batch_size: 1024
   workers: 8
   optimizer: adamw
   learning_rate: 0.0005
@@ -71,7 +80,9 @@ export:
   checkpoint: ${project_root}/${training.output_dir}/best.pt
   output_dir: ${export_root}/${ex_name}
   filenames:
-    onnx: best_fp16.onnx
+    # Keep the portable transformer ONNX in FP32. TensorRT still builds the
+    # optimized engine with FP16 kernels according to engine_args.precision.
+    onnx: best_fp32.onnx
     engine: best_fp16.engine
 
   common_args:
@@ -79,21 +90,21 @@ export:
     input_size: ${model.input_size}
     input_channels: 3 # always 3 for RGB; grayscale images are converted to 3 channels
     num_classes: ${model.num_classes}
-    opset: 12 # no need to match with yolo export
+    opset: 18  # Recommended for DINOv3 transformer/RoPE ONNX operators.
     dynamic_batch: true
     dynamic_spatial: false
     simplify: true
-    verbose: true
+    verbose: false  # true prints the complete ONNX graph (thousands of lines).
 
   onnx_args:
-    precision: fp16  # fp32 or fp16
-    batch: 8  # Example batch used only to trace and verify the ONNX graph.
+    precision: fp32  # Safe portable graph; TensorRT engine precision is configured separately.
+    batch: 1  # Example batch used only to trace and verify the ONNX graph.
     input_name: images
     output_name: logits
     verify: true
     provider: cuda  # cuda or cpu
     require_gpu: true
-    # FP16 logits can drift by a few 1e-3 versus the FP32 checkpoint.
+    # FP32 ONNX logits should closely match the PyTorch checkpoint.
     atol: 0.01
     rtol: 0.03
 

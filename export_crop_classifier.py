@@ -68,6 +68,18 @@ def load_model(cfg: dict[str, Any], checkpoint: Path, device: torch.device):
         exportable=True,
     )
     payload = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    checkpoint_model = (
+        payload.get("config", {}).get("model", {}).get("name")
+        if isinstance(payload, dict)
+        else None
+    )
+    configured_model = str(model_cfg["name"])
+    if checkpoint_model and str(checkpoint_model) != configured_model:
+        raise RuntimeError(
+            f"Checkpoint architecture is {checkpoint_model!r}, but model.name is "
+            f"{configured_model!r}. Select the matching run/checkpoint; architectures "
+            "cannot be converted into one another during ONNX export."
+        )
     state = payload.get("model", payload) if isinstance(payload, dict) else payload
     if not isinstance(state, dict):
         raise TypeError(f"Checkpoint does not contain a state dictionary: {checkpoint}")
