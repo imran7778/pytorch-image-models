@@ -31,9 +31,9 @@ environments:
 # export interpolation remains portable. Do not edit them per machine.
 project_root: ${environments.local.project_root}
 export_root: ${environments.local.export_root}
-ex_name: DINO_huge
+ex_name: DINO_base_v1
 model:
-  name: vit_huge_plus_patch16_dinov3.lvd1689m # vit_base_patch16_dinov3.lvd1689m #convnextv2_nano
+  name: vit_base_patch16_dinov3.lvd1689m # vit_base_patch16_dinov3.lvd1689m #convnextv2_nano
   pretrained: true
   input_size: 256
   num_classes: 4
@@ -54,12 +54,12 @@ data:
 
 training:
   output_dir: runs/${ex_name}
-  epochs: 100
+  epochs: 500
   # Safe default for an 8 GiB GPU. Increase only after checking free VRAM.
-  batch_size: 1024
+  batch_size: 256
   workers: 8
   optimizer: adamw
-  learning_rate: 0.0005
+  learning_rate: 0.00002
   weight_decay: 0.05
   label_smoothing: 0.1
   amp: true
