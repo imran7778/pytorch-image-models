@@ -11,6 +11,8 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+crops/
+crops/manifest.csv
 downloads/
 eggs/
 .eggs/
